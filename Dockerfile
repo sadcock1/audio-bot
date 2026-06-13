@@ -6,7 +6,6 @@ RUN apt-get update && apt-get install -y \
     make \
     g++ \
     curl \
-    quickjs \
     && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
        -o /usr/local/bin/yt-dlp \
     && chmod +x /usr/local/bin/yt-dlp \

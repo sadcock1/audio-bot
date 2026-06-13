@@ -44,7 +44,7 @@ function getStreamUrl(url) {
     const proc = spawn('yt-dlp', [
       '--no-playlist',
       '-f', 'bestaudio',
-      '--js-runtimes', 'quickjs',
+      '--js-runtimes', 'node',
       '-g', url,
     ]);
     let buf = '';
