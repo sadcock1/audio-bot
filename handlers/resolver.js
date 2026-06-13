@@ -1,8 +1,11 @@
 const { spawn } = require('child_process');
+const { existsSync } = require('fs');
 const { StreamType } = require('@discordjs/voice');
 const YouTube = require('youtube-sr').default;
 
 const URL_RE = /^https?:\/\//i;
+const COOKIES_FILE = '/app/cookies.txt';
+const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE] : [];
 
 async function resolve(query) {
   if (URL_RE.test(query)) {
@@ -27,7 +30,7 @@ async function resolve(query) {
 
 function ytdlpInfo(url) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', url]);
+    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', ...cookiesArgs(), url]);
     let buf = '';
     proc.stdout.on('data', chunk => { buf += chunk; });
     proc.stderr.on('data', () => {});
@@ -45,6 +48,7 @@ function getStreamUrl(url) {
       '--no-playlist',
       '-f', 'bestaudio',
       '--js-runtimes', 'node',
+      ...cookiesArgs(),
       '-g', url,
     ]);
     let buf = '';
