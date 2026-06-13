@@ -28,7 +28,17 @@ async function main() {
   const ctx = await chromium.launchPersistentContext(PROFILE_DIR, {
     headless: false,
     executablePath: '/usr/bin/chromium',
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+    args: [
+      '--no-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-blink-features=AutomationControlled',
+    ],
+    ignoreDefaultArgs: ['--enable-automation'],
+  });
+
+  // Hide the webdriver flag that Google checks
+  await ctx.addInitScript(() => {
+    Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
   });
 
   const page = ctx.pages()[0] ?? await ctx.newPage();
