@@ -1,19 +1,22 @@
 #!/bin/sh
+# Manual fallback: export YouTube cookies from Chrome and push to VPS.
+# Normally the cookie-refresher container handles this automatically.
 # Usage: ./refresh-cookies.sh user@100.x.x.x
-# Exports fresh YouTube cookies from Chrome and uploads them to the VPS.
 set -e
 
 VPS="${1:?Usage: ./refresh-cookies.sh user@vps-tailscale-ip}"
 
 echo "Exporting cookies from Chrome..."
 yt-dlp --cookies-from-browser chrome \
-       --cookies cookies.txt \
+       --cookies /tmp/yt-cookies.txt \
        --skip-download "https://www.youtube.com/watch?v=dQw4w9WgXcQ"
 
 echo "Uploading to VPS..."
-scp cookies.txt "$VPS":/opt/stacks/audio-bot/cookies.txt
+ssh "$VPS" "mkdir -p /opt/stacks/audio-bot/cookies"
+scp /tmp/yt-cookies.txt "$VPS":/opt/stacks/audio-bot/cookies/cookies.txt
 
 echo "Restarting bot..."
-ssh "$VPS" "cd /opt/stacks/audio-bot && docker compose restart"
+ssh "$VPS" "cd /opt/stacks/audio-bot && docker compose restart bot"
 
-echo "Done. Cookies refreshed."
+rm /tmp/yt-cookies.txt
+echo "Done."

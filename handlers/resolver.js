@@ -4,7 +4,7 @@ const { StreamType } = require('@discordjs/voice');
 const YouTube = require('youtube-sr').default;
 
 const URL_RE = /^https?:\/\//i;
-const COOKIES_FILE = '/app/cookies.txt';
+const COOKIES_FILE = '/cookies/cookies.txt';
 const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE] : [];
 const YT_ARGS = [
   '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://pot-provider:4416',

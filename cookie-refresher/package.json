@@ -1,0 +1,7 @@
+{
+  "name": "cookie-refresher",
+  "private": true,
+  "dependencies": {
+    "playwright-core": "^1.49.0"
+  }
+}

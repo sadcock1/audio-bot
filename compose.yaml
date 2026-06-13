@@ -8,7 +8,21 @@ services:
     restart: unless-stopped
     depends_on:
       - pot-provider
+    volumes:
+      - ./cookies:/cookies
+
+  cookie-refresher:
+    build: ./cookie-refresher
+    ports:
+      - "${METRICS_BIND_IP:-127.0.0.1}:6080:6080"
+    volumes:
+      - ./cookies:/cookies
+      - cookie-profile:/data
+    restart: unless-stopped
 
   pot-provider:
     image: brainicism/bgutil-ytdlp-pot-provider:latest
     restart: unless-stopped
+
+volumes:
+  cookie-profile:
