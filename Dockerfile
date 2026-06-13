@@ -3,13 +3,15 @@ FROM node:20-slim
 RUN apt-get update && apt-get install -y \
     ffmpeg \
     python3 \
+    python3-pip \
+    python3-venv \
     make \
     g++ \
     curl \
     unzip \
-    && curl -L https://github.com/yt-dlp/yt-dlp/releases/latest/download/yt-dlp \
-       -o /usr/local/bin/yt-dlp \
-    && chmod +x /usr/local/bin/yt-dlp \
+    && python3 -m venv /opt/ytdlp \
+    && /opt/ytdlp/bin/pip install yt-dlp bgutil-ytdlp-pot-provider \
+    && ln -sf /opt/ytdlp/bin/yt-dlp /usr/local/bin/yt-dlp \
     && curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
