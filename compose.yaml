@@ -10,6 +10,5 @@ services:
       - pot-provider
 
   pot-provider:
-    build:
-      context: https://github.com/Brainicism/bgutil-ytdlp-pot-provider.git
+    image: ghcr.io/brainicism/bgutil-ytdlp-pot-provider:latest
     restart: unless-stopped
