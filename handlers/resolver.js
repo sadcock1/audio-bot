@@ -6,7 +6,10 @@ const YouTube = require('youtube-sr').default;
 const URL_RE = /^https?:\/\//i;
 const COOKIES_FILE = '/app/cookies.txt';
 const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE] : [];
-const YT_ARGS = ['--extractor-args', 'youtubepot-bgutilhttp:base_url=http://pot-provider:4416'];
+const YT_ARGS = [
+  '--extractor-args', 'youtubepot-bgutilhttp:base_url=http://pot-provider:4416',
+  '--remote-components', 'ejs:github',
+];
 
 async function resolve(query) {
   if (URL_RE.test(query)) {
