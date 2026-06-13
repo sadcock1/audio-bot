@@ -41,7 +41,12 @@ function ytdlpInfo(url) {
 // Extracts a direct streamable URL from yt-dlp (no pipe needed, enables fast seeking)
 function getStreamUrl(url) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', ['--no-playlist', '-f', 'bestaudio/best', '-g', url]);
+    const proc = spawn('yt-dlp', [
+      '--no-playlist',
+      '-f', 'bestaudio',
+      '--js-runtimes', 'nodejs',
+      '-g', url,
+    ]);
     let buf = '';
     let err = '';
     proc.stdout.on('data', chunk => { buf += chunk; });
@@ -51,7 +56,8 @@ function getStreamUrl(url) {
         console.error('[yt-dlp]', err.trim());
         return reject(new Error('yt-dlp URL extraction failed'));
       }
-      resolve(buf.trim());
+      // -g may return two lines (video + audio) for DASH formats — take the last (audio)
+      resolve(buf.trim().split('\n').pop());
     });
   });
 }
