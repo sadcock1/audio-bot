@@ -6,7 +6,7 @@ const YouTube = require('youtube-sr').default;
 const URL_RE = /^https?:\/\//i;
 const COOKIES_FILE = '/app/cookies.txt';
 const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE] : [];
-const POT_ARGS = ['--extractor-args', 'youtube:getpot_bgutil_baseurl=http://pot-provider:4416'];
+const YT_ARGS = ['--extractor-args', 'youtube:player_client=tv_embedded'];
 
 async function resolve(query) {
   if (URL_RE.test(query)) {
@@ -31,7 +31,7 @@ async function resolve(query) {
 
 function ytdlpInfo(url) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', ...POT_ARGS, ...cookiesArgs(), url]);
+    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', ...YT_ARGS, ...cookiesArgs(), url]);
     let buf = '';
     proc.stdout.on('data', chunk => { buf += chunk; });
     proc.stderr.on('data', () => {});
@@ -48,7 +48,7 @@ function getStreamUrl(url) {
     const proc = spawn('yt-dlp', [
       '--no-playlist',
       '-f', 'bestaudio',
-      ...POT_ARGS,
+      ...YT_ARGS,
       ...cookiesArgs(),
       '-g', url,
     ]);
