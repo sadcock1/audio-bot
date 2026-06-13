@@ -43,10 +43,14 @@ function getStreamUrl(url) {
   return new Promise((resolve, reject) => {
     const proc = spawn('yt-dlp', ['--no-playlist', '-f', 'bestaudio/best', '-g', url]);
     let buf = '';
+    let err = '';
     proc.stdout.on('data', chunk => { buf += chunk; });
-    proc.stderr.on('data', () => {});
+    proc.stderr.on('data', chunk => { err += chunk; });
     proc.on('close', code => {
-      if (code !== 0) return reject(new Error('yt-dlp URL extraction failed'));
+      if (code !== 0) {
+        console.error('[yt-dlp]', err.trim());
+        return reject(new Error('yt-dlp URL extraction failed'));
+      }
       resolve(buf.trim());
     });
   });
