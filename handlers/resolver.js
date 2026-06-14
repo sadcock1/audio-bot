@@ -7,6 +7,7 @@ const URL_RE = /^https?:\/\//i;
 const COOKIES_FILE = '/cookies/cookies.txt';
 const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE] : [];
 const proxyArgs = () => process.env.YT_PROXY ? ['--proxy', process.env.YT_PROXY] : [];
+const YT_ARGS = ['--remote-components', 'ejs:github'];
 
 async function resolve(query) {
   if (URL_RE.test(query)) {
@@ -31,7 +32,7 @@ async function resolve(query) {
 
 function ytdlpInfo(url) {
   return new Promise((resolve, reject) => {
-    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', ...proxyArgs(), ...cookiesArgs(), url]);
+    const proc = spawn('yt-dlp', ['--dump-json', '--no-playlist', ...YT_ARGS, ...proxyArgs(), ...cookiesArgs(), url]);
     let buf = '';
     proc.stdout.on('data', chunk => { buf += chunk; });
     proc.stderr.on('data', () => {});
@@ -48,6 +49,7 @@ function getStreamUrl(url) {
     const proc = spawn('yt-dlp', [
       '--no-playlist',
       '-f', 'bestaudio',
+      ...YT_ARGS,
       ...proxyArgs(),
       ...cookiesArgs(),
       '-g', url,
