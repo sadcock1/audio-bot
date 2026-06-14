@@ -1,20 +1,17 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { hasDjPermission } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('skip')
-    .setDescription('Skip the current track'),
+  name: 'skip',
 
-  async execute(interaction) {
-    if (!hasDjPermission(interaction)) {
-      return interaction.reply({ content: 'You need the DJ role to skip tracks.', flags: 64 });
+  async execute(message) {
+    if (!hasDjPermission(message)) {
+      return message.reply('You need the DJ role to skip tracks.');
     }
-    const queue = getQueue(interaction.guildId);
-    if (!queue) return interaction.reply({ content: 'Nothing is playing.', flags: 64 });
+    const queue = getQueue(message.guildId);
+    if (!queue) return message.reply('Nothing is playing.');
 
     queue.player.stop(true);
-    await interaction.reply({ content: 'Skipped.', flags: 64 });
+    await message.reply('Skipped.');
   },
 };

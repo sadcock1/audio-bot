@@ -1,48 +1,34 @@
-const { SlashCommandBuilder, PermissionFlagsBits } = require('discord.js');
 const { getSettings } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('dj')
-    .setDescription('Manage the DJ role for this server')
-    .addSubcommand(sub =>
-      sub.setName('set')
-        .setDescription('Restrict music controls to a specific role')
-        .addRoleOption(opt =>
-          opt.setName('role').setDescription('The DJ role').setRequired(true),
-        ),
-    )
-    .addSubcommand(sub =>
-      sub.setName('clear')
-        .setDescription('Remove the DJ role restriction (everyone can use music controls)'),
-    )
-    .addSubcommand(sub =>
-      sub.setName('show')
-        .setDescription('Show the current DJ role setting'),
-    )
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageGuild),
+  name: 'dj',
 
-  async execute(interaction) {
-    const sub = interaction.options.getSubcommand();
-    const settings = getSettings(interaction.guildId);
+  async execute(message, args) {
+    if (!message.member.permissions.has('ManageGuild')) {
+      return message.reply('You need the Manage Server permission to configure the DJ role.');
+    }
+
+    const sub = args[0]?.toLowerCase();
+    const settings = getSettings(message.guildId);
 
     if (sub === 'set') {
-      const role = interaction.options.getRole('role');
+      const role = message.mentions.roles.first();
+      if (!role) return message.reply('Please mention a role. Example: `dj set @DJ`');
       settings.djRoleId = role.id;
-      return interaction.reply({ content: `DJ role set to ${role}.`, flags: 64 });
+      return message.reply(`DJ role set to ${role}.`);
     }
 
     if (sub === 'clear') {
       settings.djRoleId = null;
-      return interaction.reply({ content: 'DJ role restriction removed.', flags: 64 });
+      return message.reply('DJ role restriction removed.');
     }
 
     // show
     if (!settings.djRoleId) {
-      return interaction.reply({ content: 'No DJ role set — everyone can use music controls.', flags: 64 });
+      return message.reply('No DJ role set — everyone can use music controls.');
     }
-    const role = interaction.guild.roles.cache.get(settings.djRoleId);
+    const role = message.guild.roles.cache.get(settings.djRoleId);
     const label = role ? role.toString() : `Unknown role (${settings.djRoleId})`;
-    return interaction.reply({ content: `Current DJ role: ${label}`, flags: 64 });
+    return message.reply(`Current DJ role: ${label}`);
   },
 };

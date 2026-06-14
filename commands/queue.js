@@ -1,16 +1,14 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { formatDuration } = require('../handlers/controlMessage');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('queue')
-    .setDescription('Show the current queue'),
+  name: 'queue',
 
-  async execute(interaction) {
-    const queue = getQueue(interaction.guildId);
+  async execute(message) {
+    const queue = getQueue(message.guildId);
     if (!queue || queue.tracks.length === 0) {
-      return interaction.reply({ content: 'The queue is empty.', flags: 64 });
+      return message.reply('The queue is empty.');
     }
 
     const lines = queue.tracks.map((track, i) => {
@@ -26,6 +24,6 @@ module.exports = {
 
     if (lines.length > 20) embed.setFooter({ text: `+${lines.length - 20} more tracks` });
 
-    await interaction.reply({ embeds: [embed], flags: 64 });
+    await message.reply({ embeds: [embed] });
   },
 };

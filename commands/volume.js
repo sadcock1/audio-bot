@@ -1,36 +1,28 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { getSettings, hasDjPermission } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('volume')
-    .setDescription('Set playback volume (0–100)')
-    .addIntegerOption(opt =>
-      opt.setName('level')
-        .setDescription('Volume level (default 100)')
-        .setRequired(true)
-        .setMinValue(0)
-        .setMaxValue(100),
-    ),
+  name: 'volume',
 
-  async execute(interaction) {
-    if (!hasDjPermission(interaction)) {
-      return interaction.reply({ content: 'You need the DJ role to change volume.', flags: 64 });
+  async execute(message, args) {
+    if (!hasDjPermission(message)) {
+      return message.reply('You need the DJ role to change volume.');
     }
 
-    const level = interaction.options.getInteger('level');
-    const normalized = level / 100;
+    const level = parseInt(args[0], 10);
+    if (isNaN(level) || level < 0 || level > 100) {
+      return message.reply('Please provide a volume level between 0 and 100.');
+    }
 
-    const settings = getSettings(interaction.guildId);
+    const normalized = level / 100;
+    const settings = getSettings(message.guildId);
     settings.volume = normalized;
 
-    // Apply to currently playing resource immediately if active
-    const queue = getQueue(interaction.guildId);
+    const queue = getQueue(message.guildId);
     if (queue?.currentResource?.volume) {
       queue.currentResource.volume.setVolume(normalized);
     }
 
-    await interaction.reply({ content: `Volume set to **${level}%**.`, flags: 64 });
+    await message.reply(`Volume set to **${level}%**.`);
   },
 };

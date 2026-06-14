@@ -1,4 +1,3 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { joinVoiceChannel, createAudioPlayer } = require('@discordjs/voice');
 const { resolve } = require('../handlers/resolver');
 const { getQueue, createQueue } = require('../handlers/queueManager');
@@ -8,90 +7,80 @@ const { extractPlaylistId, getPlaylistTracks } = require('../handlers/spotify');
 const { hasDjPermission } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('play')
-    .setDescription('Play a song or Spotify playlist, or add it to the queue')
-    .addStringOption(opt =>
-      opt.setName('query').setDescription('URL, search term, or Spotify playlist URL').setRequired(true),
-    ),
+  name: 'play',
 
-  async execute(interaction) {
-    if (!hasDjPermission(interaction)) {
-      return interaction.reply({ content: 'You need the DJ role to play music.', flags: 64 });
+  async execute(message, args) {
+    if (!hasDjPermission(message)) {
+      return message.reply('You need the DJ role to play music.');
     }
-    const voiceChannel = interaction.member.voice.channel;
+    const voiceChannel = message.member.voice.channel;
     if (!voiceChannel) {
-      return interaction.reply({ content: 'You must be in a voice channel.', flags: 64 });
+      return message.reply('You must be in a voice channel.');
     }
 
-    const query = interaction.options.getString('query');
-    const spotifyId = extractPlaylistId(query);
+    const query = args.join(' ');
+    if (!query) return message.reply('Please provide a URL or search query.');
 
+    const spotifyId = extractPlaylistId(query);
     if (spotifyId) {
-      await handleSpotifyPlaylist(interaction, voiceChannel, spotifyId);
+      await handleSpotifyPlaylist(message, voiceChannel, spotifyId);
     } else {
-      await handleSingleTrack(interaction, voiceChannel, query);
+      await handleSingleTrack(message, voiceChannel, query);
     }
   },
 };
 
-async function handleSingleTrack(interaction, voiceChannel, query) {
-  await interaction.deferReply({ flags: 64 });
-
+async function handleSingleTrack(message, voiceChannel, query) {
   let track;
   try {
     track = await resolve(query);
   } catch {
-    return interaction.editReply('Could not resolve that track.');
+    return message.reply('Could not resolve that track.');
   }
 
-  const existingQueue = getQueue(interaction.guildId);
+  const existingQueue = getQueue(message.guildId);
   if (existingQueue) {
     existingQueue.tracks.push(track);
-    return interaction.editReply(`Added to queue: **${track.title}**`);
+    return message.reply(`Added to queue: **${track.title}**`);
   }
 
-  const { queue } = setupVoice(interaction, voiceChannel);
+  const { queue } = setupVoice(message, voiceChannel);
   queue.tracks.push(track);
 
   const musicChannel =
-    interaction.guild.channels.cache.get(process.env.MUSIC_CHANNEL_ID) ?? interaction.channel;
-  await sendControlMessage(musicChannel, interaction.guildId);
-  await playTrack(interaction.guildId, track);
+    message.guild.channels.cache.get(process.env.MUSIC_CHANNEL_ID) ?? message.channel;
+  await sendControlMessage(musicChannel, message.guildId);
+  await playTrack(message.guildId, track);
 
-  await interaction.editReply(`Now playing: **${track.title}**`);
+  await message.reply(`Now playing: **${track.title}**`);
 }
 
-async function handleSpotifyPlaylist(interaction, voiceChannel, playlistId) {
-  await interaction.deferReply({ flags: 64 });
-
+async function handleSpotifyPlaylist(message, voiceChannel, playlistId) {
   let searchQueries;
   try {
     searchQueries = await getPlaylistTracks(playlistId);
   } catch (err) {
-    return interaction.editReply(`Could not fetch Spotify playlist: ${err.message}`);
+    return message.reply(`Could not fetch Spotify playlist: ${err.message}`);
   }
 
-  if (searchQueries.length === 0) return interaction.editReply('That playlist is empty.');
+  if (searchQueries.length === 0) return message.reply('That playlist is empty.');
 
-  await interaction.editReply(`Loading **${searchQueries.length}** tracks from Spotify…`);
+  await message.reply(`Loading **${searchQueries.length}** tracks from Spotify…`);
 
-  // Set up voice connection if not already active
-  let queue = getQueue(interaction.guildId);
+  let queue = getQueue(message.guildId);
   if (!queue) {
-    ({ queue } = setupVoice(interaction, voiceChannel));
+    ({ queue } = setupVoice(message, voiceChannel));
   }
 
   const musicChannel =
-    interaction.guild.channels.cache.get(process.env.MUSIC_CHANNEL_ID) ?? interaction.channel;
+    message.guild.channels.cache.get(process.env.MUSIC_CHANNEL_ID) ?? message.channel;
 
-  // Resolve tracks in batches of 5, starting playback as soon as the first resolves
   let started = false;
   const BATCH = 5;
 
   for (let i = 0; i < searchQueries.length; i += BATCH) {
-    const currentQueue = getQueue(interaction.guildId);
-    if (!currentQueue) break; // Stopped mid-load
+    const currentQueue = getQueue(message.guildId);
+    if (!currentQueue) break;
 
     const results = await Promise.allSettled(
       searchQueries.slice(i, i + BATCH).map(q => resolve(q)),
@@ -99,31 +88,31 @@ async function handleSpotifyPlaylist(interaction, voiceChannel, playlistId) {
 
     for (const result of results) {
       if (result.status !== 'fulfilled') continue;
-      const currentQueue = getQueue(interaction.guildId);
+      const currentQueue = getQueue(message.guildId);
       if (!currentQueue) break;
 
       currentQueue.tracks.push(result.value);
 
       if (!started) {
         started = true;
-        await sendControlMessage(musicChannel, interaction.guildId);
-        await playTrack(interaction.guildId, result.value);
+        await sendControlMessage(musicChannel, message.guildId);
+        await playTrack(message.guildId, result.value);
       }
     }
   }
 
-  if (!started) return interaction.editReply('Could not resolve any tracks from that playlist.');
+  if (!started) return message.reply('Could not resolve any tracks from that playlist.');
 }
 
-function setupVoice(interaction, voiceChannel) {
+function setupVoice(message, voiceChannel) {
   const connection = joinVoiceChannel({
     channelId: voiceChannel.id,
-    guildId: interaction.guildId,
-    adapterCreator: interaction.guild.voiceAdapterCreator,
+    guildId: message.guildId,
+    adapterCreator: message.guild.voiceAdapterCreator,
   });
   const player = createAudioPlayer();
   connection.subscribe(player);
-  const queue = createQueue(interaction.guildId, { player, connection });
-  setupPlayerEvents(interaction.guildId, player);
+  const queue = createQueue(message.guildId, { player, connection });
+  setupPlayerEvents(message.guildId, player);
   return { connection, player, queue };
 }

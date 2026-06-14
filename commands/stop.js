@@ -1,25 +1,21 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { cleanup } = require('../handlers/audioPlayer');
 const { hasDjPermission } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('stop')
-    .setDescription('Stop playback, clear the queue, and disconnect'),
+  name: 'stop',
 
-  async execute(interaction) {
-    if (!hasDjPermission(interaction)) {
-      return interaction.reply({ content: 'You need the DJ role to stop playback.', flags: 64 });
+  async execute(message) {
+    if (!hasDjPermission(message)) {
+      return message.reply('You need the DJ role to stop playback.');
     }
-    const queue = getQueue(interaction.guildId);
-    if (!queue) return interaction.reply({ content: 'Nothing is playing.', flags: 64 });
+    const queue = getQueue(message.guildId);
+    if (!queue) return message.reply('Nothing is playing.');
 
-    // Clear tracks so the idle event sees an empty queue and doesn't re-trigger
     queue.tracks = [];
     queue.player.stop(true);
-    cleanup(interaction.guildId);
+    cleanup(message.guildId);
 
-    await interaction.reply({ content: 'Stopped and disconnected.', flags: 64 });
+    await message.reply('Stopped and disconnected.');
   },
 };

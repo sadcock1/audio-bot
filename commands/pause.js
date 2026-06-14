@@ -1,25 +1,22 @@
-const { SlashCommandBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { updateControlMessage } = require('../handlers/controlMessage');
 const { hasDjPermission } = require('../handlers/guildSettings');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('pause')
-    .setDescription('Pause playback'),
+  name: 'pause',
 
-  async execute(interaction) {
-    if (!hasDjPermission(interaction)) {
-      return interaction.reply({ content: 'You need the DJ role to pause playback.', flags: 64 });
+  async execute(message) {
+    if (!hasDjPermission(message)) {
+      return message.reply('You need the DJ role to pause playback.');
     }
-    const queue = getQueue(interaction.guildId);
+    const queue = getQueue(message.guildId);
     if (!queue || queue.paused) {
-      return interaction.reply({ content: 'Nothing to pause.', flags: 64 });
+      return message.reply('Nothing to pause.');
     }
 
     queue.player.pause();
     queue.paused = true;
-    await updateControlMessage(interaction.guildId);
-    await interaction.reply({ content: 'Paused.', flags: 64 });
+    await updateControlMessage(message.guildId);
+    await message.reply('Paused.');
   },
 };

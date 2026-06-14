@@ -1,16 +1,14 @@
-const { SlashCommandBuilder, EmbedBuilder } = require('discord.js');
+const { EmbedBuilder } = require('discord.js');
 const { getQueue } = require('../handlers/queueManager');
 const { formatDuration } = require('../handlers/controlMessage');
 
 module.exports = {
-  data: new SlashCommandBuilder()
-    .setName('nowplaying')
-    .setDescription('Show the currently playing track'),
+  name: 'nowplaying',
 
-  async execute(interaction) {
-    const queue = getQueue(interaction.guildId);
+  async execute(message) {
+    const queue = getQueue(message.guildId);
     const track = queue?.tracks[queue.currentIndex];
-    if (!track) return interaction.reply({ content: 'Nothing is playing.', flags: 64 });
+    if (!track) return message.reply('Nothing is playing.');
 
     const embed = new EmbedBuilder()
       .setTitle('Now Playing')
@@ -21,6 +19,6 @@ module.exports = {
     if (track.duration) embed.addFields({ name: 'Duration', value: formatDuration(track.duration), inline: true });
     if (queue.paused) embed.addFields({ name: 'Status', value: '⏸ Paused', inline: true });
 
-    await interaction.reply({ embeds: [embed], flags: 64 });
+    await message.reply({ embeds: [embed] });
   },
 };

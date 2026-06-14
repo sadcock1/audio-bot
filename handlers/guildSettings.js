@@ -2,7 +2,7 @@ const settings = new Map();
 
 function getSettings(guildId) {
   if (!settings.has(guildId)) {
-    settings.set(guildId, { volume: 1.0, djRoleId: null });
+    settings.set(guildId, { volume: 1.0, djRoleId: null, prefix: 's' });
   }
   return settings.get(guildId);
 }
