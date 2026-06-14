@@ -56,7 +56,12 @@ async function main() {
   await page.goto('https://www.youtube.com', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await page.waitForTimeout(3000);
 
-  let cookies = await ctx.cookies(['https://www.youtube.com', 'https://accounts.google.com']);
+  let cookies = await ctx.cookies([
+    'https://www.youtube.com',
+    'https://accounts.google.com',
+    'https://google.com',
+    'https://www.google.com',
+  ]);
 
   if (!isLoggedIn(cookies)) {
     if (!WAIT_FOR_LOGIN) {
@@ -83,7 +88,12 @@ async function main() {
     console.log('[cookie-refresher] Signed in! Collecting cookies...');
     await page.goto('https://www.youtube.com', { waitUntil: 'networkidle', timeout: 30_000 });
     await page.waitForTimeout(2000);
-    cookies = await ctx.cookies(['https://www.youtube.com', 'https://accounts.google.com']);
+    cookies = await ctx.cookies([
+      'https://www.youtube.com',
+      'https://accounts.google.com',
+      'https://google.com',
+      'https://www.google.com',
+    ]);
   }
 
   if (!hasValidAuthCookies(cookies)) {

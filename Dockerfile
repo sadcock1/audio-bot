@@ -11,6 +11,7 @@ RUN apt-get update && apt-get install -y \
     && python3 -m venv /opt/ytdlp \
     && /opt/ytdlp/bin/pip install yt-dlp \
     && ln -sf /opt/ytdlp/bin/yt-dlp /usr/local/bin/yt-dlp \
+    && curl -fsSL https://deno.land/install.sh | DENO_INSTALL=/usr/local sh \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
