@@ -4,7 +4,10 @@ const fs = require('fs');
 const path = require('path');
 
 const COOKIES_OUT = '/cookies/cookies.txt';
+const COOKIES_TMP = '/cookies/cookies.tmp';
 const PROFILE_DIR = '/data/profile';
+const WAIT_FOR_LOGIN = process.env.WAIT_FOR_LOGIN === '1';
+const LOGIN_TIMEOUT_MS = 15 * 60 * 1000;
 
 function toCookiesTxt(cookies) {
   const lines = [
@@ -19,6 +22,15 @@ function toCookiesTxt(cookies) {
     lines.push([c.domain, subdomain, c.path, secure, expires, c.name, c.value].join('\t'));
   }
   return lines.join('\n') + '\n';
+}
+
+function isLoggedIn(cookies) {
+  return cookies.some(c => c.name === 'SID' && c.value.length > 5);
+}
+
+function hasValidAuthCookies(cookies) {
+  const required = ['SID', '__Secure-1PSID', 'SAPISID'];
+  return required.some(name => cookies.some(c => c.name === name && c.value.length > 5));
 }
 
 async function main() {
@@ -36,7 +48,6 @@ async function main() {
     ignoreDefaultArgs: ['--enable-automation'],
   });
 
-  // Hide the webdriver flag that Google checks
   await ctx.addInitScript(() => {
     Object.defineProperty(navigator, 'webdriver', { get: () => undefined });
   });
@@ -45,18 +56,28 @@ async function main() {
   await page.goto('https://www.youtube.com', { waitUntil: 'domcontentloaded', timeout: 30_000 });
   await page.waitForTimeout(3000);
 
-  // Check for Google session cookie — present only when signed in
   let cookies = await ctx.cookies(['https://www.youtube.com', 'https://accounts.google.com']);
-  const loggedIn = cookies.some(c => c.name === 'SID' && c.value.length > 5);
 
-  if (!loggedIn) {
-    console.log('[cookie-refresher] Not signed in — open http://<VPS-TAILSCALE-IP>:6080/vnc.html in your browser and sign into YouTube');
+  if (!isLoggedIn(cookies)) {
+    if (!WAIT_FOR_LOGIN) {
+      console.log('[cookie-refresher] Not signed in — skipping (cron mode). For initial setup run: docker compose exec cookie-refresher env WAIT_FOR_LOGIN=1 DISPLAY=:99 node /app/refresh.js');
+      await ctx.close();
+      process.exit(1);
+    }
 
-    // Poll every 5 seconds until sign-in cookies appear
-    while (true) {
+    console.log('[cookie-refresher] Not signed in — open http://<VPS-TAILSCALE-IP>:6080/vnc.html and sign into YouTube (burner account). Waiting up to 15 minutes...');
+
+    const deadline = Date.now() + LOGIN_TIMEOUT_MS;
+    while (Date.now() < deadline) {
       await page.waitForTimeout(5000);
       cookies = await ctx.cookies(['https://www.youtube.com', 'https://accounts.google.com']);
-      if (cookies.some(c => c.name === 'SID' && c.value.length > 5)) break;
+      if (isLoggedIn(cookies)) break;
+    }
+
+    if (!isLoggedIn(cookies)) {
+      console.error('[cookie-refresher] Timed out waiting for sign-in (15 min). Re-run the setup command after signing in via noVNC.');
+      await ctx.close();
+      process.exit(1);
     }
 
     console.log('[cookie-refresher] Signed in! Collecting cookies...');
@@ -65,8 +86,16 @@ async function main() {
     cookies = await ctx.cookies(['https://www.youtube.com', 'https://accounts.google.com']);
   }
 
-  fs.writeFileSync(COOKIES_OUT, toCookiesTxt(cookies));
-  console.log(`[cookie-refresher] Exported ${cookies.length} cookies`);
+  if (!hasValidAuthCookies(cookies)) {
+    console.error('[cookie-refresher] Exported cookies are missing essential auth cookies — not overwriting existing file.');
+    await ctx.close();
+    process.exit(1);
+  }
+
+  // Write to temp then atomically rename so a failed export never corrupts the live file
+  fs.writeFileSync(COOKIES_TMP, toCookiesTxt(cookies));
+  fs.renameSync(COOKIES_TMP, COOKIES_OUT);
+  console.log(`[cookie-refresher] Exported ${cookies.length} cookies to ${COOKIES_OUT}`);
 
   await ctx.close();
 }
