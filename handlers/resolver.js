@@ -9,6 +9,15 @@ const cookiesArgs = () => existsSync(COOKIES_FILE) ? ['--cookies', COOKIES_FILE]
 const proxyArgs = () => process.env.YT_PROXY ? ['--proxy', process.env.YT_PROXY] : [];
 const YT_ARGS = ['--remote-components', 'ejs:github'];
 
+function isPlaylistUrl(query) {
+  if (!URL_RE.test(query)) return false;
+  try {
+    return new URL(query).searchParams.has('list');
+  } catch {
+    return false;
+  }
+}
+
 async function resolve(query) {
   if (URL_RE.test(query)) {
     const info = await ytdlpInfo(query);
@@ -28,6 +37,40 @@ async function resolve(query) {
     duration: result.duration ? Math.floor(result.duration / 1000) : 0,
     thumbnail: result.thumbnail?.url ?? null,
   };
+}
+
+function resolvePlaylist(url) {
+  return new Promise((resolve, reject) => {
+    const proc = spawn('yt-dlp', [
+      '--flat-playlist', '--dump-json',
+      ...YT_ARGS, ...proxyArgs(), ...cookiesArgs(),
+      url,
+    ]);
+    let buf = '';
+    let err = '';
+    proc.stdout.on('data', chunk => { buf += chunk; });
+    proc.stderr.on('data', chunk => { err += chunk; });
+    proc.on('close', code => {
+      if (code !== 0) {
+        console.error('[yt-dlp]', err.trim());
+        return reject(new Error('yt-dlp playlist extraction failed'));
+      }
+      try {
+        const tracks = buf.trim().split('\n').filter(Boolean).map(line => {
+          const e = JSON.parse(line);
+          return {
+            url: `https://www.youtube.com/watch?v=${e.id}`,
+            title: e.title ?? e.id,
+            duration: Math.round(e.duration ?? 0),
+            thumbnail: e.thumbnail ?? e.thumbnails?.[0]?.url ?? null,
+          };
+        });
+        resolve(tracks);
+      } catch (e) {
+        reject(e);
+      }
+    });
+  });
 }
 
 function ytdlpInfo(url) {
@@ -85,4 +128,4 @@ async function createAudioStream(url, seekSeconds = 0) {
   return { stream: ffmpeg.stdout, type: StreamType.OggOpus };
 }
 
-module.exports = { resolve, createAudioStream };
+module.exports = { resolve, resolvePlaylist, isPlaylistUrl, createAudioStream };

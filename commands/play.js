@@ -1,5 +1,5 @@
 const { joinVoiceChannel, createAudioPlayer } = require('@discordjs/voice');
-const { resolve } = require('../handlers/resolver');
+const { resolve, resolvePlaylist, isPlaylistUrl } = require('../handlers/resolver');
 const { getQueue, createQueue } = require('../handlers/queueManager');
 const { playTrack, setupPlayerEvents } = require('../handlers/audioPlayer');
 const { sendControlMessage } = require('../handlers/controlMessage');
@@ -24,6 +24,8 @@ module.exports = {
     const spotifyId = extractPlaylistId(query);
     if (spotifyId) {
       await handleSpotifyPlaylist(message, voiceChannel, spotifyId);
+    } else if (isPlaylistUrl(query)) {
+      await handleYouTubePlaylist(message, voiceChannel, query);
     } else {
       await handleSingleTrack(message, voiceChannel, query);
     }
@@ -53,6 +55,32 @@ async function handleSingleTrack(message, voiceChannel, query) {
   await playTrack(message.guildId, track);
 
   await message.reply(`Now playing: **${track.title}**`);
+}
+
+async function handleYouTubePlaylist(message, voiceChannel, url) {
+  let tracks;
+  try {
+    tracks = await resolvePlaylist(url);
+  } catch (err) {
+    return message.reply(`Could not fetch playlist: ${err.message}`);
+  }
+
+  if (tracks.length === 0) return message.reply('That playlist is empty.');
+
+  const existingQueue = getQueue(message.guildId);
+  if (existingQueue) {
+    for (const track of tracks) existingQueue.tracks.push(track);
+    return message.reply(`Added **${tracks.length}** tracks to the queue.`);
+  }
+
+  const { queue } = setupVoice(message, voiceChannel);
+  for (const track of tracks) queue.tracks.push(track);
+
+  const musicChannel =
+    message.guild.channels.cache.get(process.env.MUSIC_CHANNEL_ID) ?? message.channel;
+  await sendControlMessage(musicChannel, message.guildId);
+  await playTrack(message.guildId, tracks[0]);
+  await message.reply(`Queued **${tracks.length}** tracks from YouTube playlist.`);
 }
 
 async function handleSpotifyPlaylist(message, voiceChannel, playlistId) {
