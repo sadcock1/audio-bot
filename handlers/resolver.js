@@ -76,7 +76,7 @@ async function createAudioStream(url, seekSeconds = 0) {
     '-reconnect', '1', '-reconnect_streamed', '1', '-reconnect_delay_max', '5',
   ];
   if (seekSeconds > 0) args.push('-ss', String(Math.floor(seekSeconds)));
-  args.push('-i', streamUrl, '-f', 'ogg', '-c:a', 'libopus', '-ar', '48000', '-ac', '2', 'pipe:1');
+  args.push('-i', streamUrl, '-f', 'ogg', '-c:a', 'libopus', '-b:a', '128k', '-ar', '48000', '-ac', '2', 'pipe:1');
 
   const ffmpeg = spawn('ffmpeg', args);
   ffmpeg.stderr.on('data', () => {});
