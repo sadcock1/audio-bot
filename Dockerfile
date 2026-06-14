@@ -8,6 +8,7 @@ RUN apt-get update && apt-get install -y \
     make \
     g++ \
     curl \
+    unzip \
     && python3 -m venv /opt/ytdlp \
     && /opt/ytdlp/bin/pip install yt-dlp \
     && ln -sf /opt/ytdlp/bin/yt-dlp /usr/local/bin/yt-dlp \
